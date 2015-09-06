@@ -33,6 +33,11 @@ func main() {
 		return
 	}
 
+	if flag.NArg() == 0 {
+		fmt.Println("no input file")
+		return
+	}
+
 	expression := ""
 	if *e != "" {
 		expression = *e
