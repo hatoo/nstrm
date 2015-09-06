@@ -1,0 +1,40 @@
+takewhile = { f ->
+  { x ->
+    if f(x) {
+      x
+    }else{
+      close
+    }
+  }
+}
+
+all = {f->
+  | f | {cond ->
+    emit cond
+    if cond==false {
+      close
+    }
+  } | last(true)
+}
+
+N = 600851475143
+
+primes = {->
+  ps = []
+  seq(2,N) | {n ->
+    if ps | takewhile({x->n>=x*x}) | all({x-> n%x!=0 } ) {
+      ps = append(ps,n)
+      n
+    }
+  } |
+}
+
+primes() | {p->
+  while N%p == 0 {
+    N = N/p
+  }
+  if N == 1 {
+    emit p
+    close
+  }
+} | STDOUT

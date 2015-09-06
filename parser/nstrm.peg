@@ -1,0 +1,76 @@
+package parser
+
+type Nstrm Peg {
+	MyParser
+}
+
+top <- body !.
+body <- sp (expr period+ sp )* expr? sp
+
+expr <- e0
+
+e0 <- ('|'{p.Current.FirstFilter=true})? ws e01 { p.pipeStart(begin,end) } ( '|' ws e01 { p.pipePush(begin,end) } )+ ws ('|'{p.Current.LastFilter=true})? { p.pipeEnd() }
+       / e01
+
+e01<- e1 ( '||' sp e1 { p.addOp2("or",begin,end)}
+         / '&&' sp e1 { p.addOp2("and",begin,end)} )*
+
+e1 <- e2 ( '==' sp e2 { p.addOp2("==",begin,end) }
+         / '!=' sp e2 { p.addOp2("!=",begin,end) }
+				 / '<=' sp e2 { p.addOp2("<=",begin,end) }
+				 / '>=' sp e2 { p.addOp2(">=",begin,end) }
+				 / '<'  sp e2 { p.addOp2("<" ,begin,end) }
+				 / '>'  sp e2 { p.addOp2(">" ,begin,end) } )*
+
+e2 <- e3 ( '+' sp e3 { p.addOp2("ADD",begin,end) }
+		 / '-' sp e3 { p.addOp2("SUB",begin,end) } )*
+
+e3 <- e4 ( '*' sp e4 { p.addOp2("MUL",begin,end) }
+		 / '/' sp e4 { p.addOp2("DIV",begin,end) }
+		 / '%' sp e4 { p.addOp2("MOD",begin,end) } )*
+
+e4 <- value ( ' ' / '\t' / comment )*
+
+value <-  floating
+		/ integer
+		/ stringliteral
+		/ array
+		/ block
+		/ ifexpr
+		/ whileexpr
+		/ emit
+		/ 'skip'  { p.skip()  }
+		/ 'close' { p.pushScope() } ws expr? { p.close() }
+		/ < 'nil'  > { p.literal(nil,begin,end) }
+		/ < 'true' > { p.literal(true,begin,end) }
+		/ < 'false'> { p.literal(false,begin,end) }
+		/ wait
+		/ funcall
+		/ bind
+		/ refvariable
+		/ '(' sp expr sp ')'
+
+identifer <- [_a-zA-Z] [_a-zA-Z0-9]*
+identifer_prepare <- < identifer > sp { p.prepare(buffer[begin:end]) }
+identifer_argment <- < identifer > sp { p.addArgment(buffer[begin:end]) }
+
+bind     <- identifer_prepare '=' sp expr { p.bind() }
+refvariable <- < identifer > { p.refVar(buffer[begin:end],begin,end) }
+funcall  <- < identifer_prepare '(' sp (expr ',')* expr? ')' > { p.funcall(begin,end) }
+array    <- '[' { p.pushScope() } sp (sp expr sp ',')* expr? sp ']' { p.array() }
+block    <- '{' { p.pushScope() } sp (sp identifer_argment sp ',')* identifer_argment? sp '->' body '}' { p.block() }
+ifexpr <- 'if' { p.pushScope() } sp expr { p.ifCond() } '{' body { p.ifTrue() } '}' ( sp 'else' sp
+    ( ('{' body { p.ifElse() } '}') / (sp ifexpr) { p.ifElse() } ) )?	{ p.ifexpr() }
+whileexpr <- 'while' { p.pushScope() } sp expr { p.whileCond() } '{' body { p.whileexpr() } '}'
+wait     <- 'wait' { p.wait() }
+emit     <- 'emit' { p.pushScope() } sp ( ( (expr ',' sp)+ expr )  / expr) { p.emit() }
+
+floating <-  < minus? [0-9]+ '.' [0-9]* > { p.addNumber(buffer[begin:end],begin,end) }
+integer  <- < minus? [0-9]+ >             { p.addNumber(buffer[begin:end],begin,end) }
+stringliteral <- < '"' [^\"]* '"' > { s,_:=strconv.Unquote(buffer[begin:end]);p.literal(s,begin,end) }
+
+sp <- ( ' ' / '\t' / '\n' / '\r' / comment )*
+ws <- ( ' ' / '\t' )*
+
+comment <- '#' [^\n]* '\n'?
+period <- ';' / '\n' / '\r' / comment

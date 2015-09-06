@@ -1,0 +1,7 @@
+# pick even numbers
+seq(100) | {x -> if x % 2 == 1 {skip}; x} | STDOUT
+# output:
+#  2
+#  4
+#  6
+#  :

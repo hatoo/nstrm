@@ -1,0 +1,8 @@
+#close pipeline
+seq(10) | {x -> if x > 5 { close } else { x }  } | STDOUT
+# output:
+#  1
+#  2
+#  3
+#  4
+#  5

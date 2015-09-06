@@ -1,0 +1,16 @@
+fold = { f,init ->
+  ret = init
+  | {x->
+    ret = f(ret,x)
+  } | last()
+}
+
+sum = {->
+  fold(ADD,0)
+}
+
+seq(999) | { x ->
+  if x%3==0 || x%5==0 {
+    x
+  }
+} | sum() | STDOUT

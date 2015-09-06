@@ -1,0 +1,32 @@
+takewhile = { f ->
+  { x ->
+    if f(x) {
+      x
+    }else{
+      close
+    }
+  }
+}
+
+fib = { ->
+  a = 0
+  b = 1
+  {->
+    c = b
+    b = a+b
+    a = c
+  }
+}
+
+fold = { f,init ->
+  ret = init
+  | {x->
+    ret = f(ret,x)
+  } | last()
+}
+
+sum = {->
+  fold(ADD,0)
+}
+
+fib() | { x-> if x%2==0 {x} } | takewhile({x-> x <= 4000000}) | sum() | STDOUT
